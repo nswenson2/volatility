@@ -99,7 +99,7 @@ class PrintKey(hivelist.HiveList):
                 outfd.write("Subkeys:\n")
                 for s in rawreg.subkeys(key):
                     if s.Name == None:
-                        outfd.write("  Unknown subkey at {0:#x}\n".format(s.obj_offset))
+                        outfd.write("  Unknown subkey: " + s.Name.reason + "\n")
                     else:
                         outfd.write("  {1:3s} {0}\n".format(s.Name, self.voltext(s)))
                 outfd.write("\n")

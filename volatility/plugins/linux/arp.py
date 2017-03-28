@@ -45,13 +45,7 @@ class linux_arp(linux_common.AbstractLinuxCommand):
 
         neigh_tables_addr = self.addr_space.profile.get_symbol("neigh_tables")
 
-        hasnext = True
-        try:
-            self.addr_space.profile.get_obj_offset("neigh_table", "next")
-        except KeyError:
-            hasnext = False
-
-        if hasnext == True:
+        if hasattr("neigh_table", "next"):
             ntables_ptr = obj.Object("Pointer", offset = neigh_tables_addr, vm = self.addr_space)
             tables = linux_common.walk_internal_list("neigh_table", "next", ntables_ptr)
         else:
@@ -74,20 +68,10 @@ class linux_arp(linux_common.AbstractLinuxCommand):
             hash_size = ntable.nht.hash_mask
             hash_table = ntable.nht.hash_buckets
         else:
-            try:
-                hash_size = (1 << ntable.nht.hash_shift)
-            except OverflowError:
-                return []        
-    
+            hash_size = (1 << ntable.nht.hash_shift)
             hash_table = ntable.nht.hash_buckets
 
-        if not self.addr_space.is_valid_address(hash_table):
-            return []
-
         buckets = obj.Object(theType = 'Array', offset = hash_table, vm = self.addr_space, targetType = 'Pointer', count = hash_size)
-
-        if not buckets or hash_size > 50000:
-            return []
 
         for i in range(hash_size):
             if buckets[i]:
@@ -114,11 +98,10 @@ class linux_arp(linux_common.AbstractLinuxCommand):
             else:
                 ip = '?'
 
-            if n.dev.is_valid():
-                mac = ":".join(["{0:02x}".format(x) for x in n.ha][:n.dev.addr_len])
-                devname = n.dev.name
+            mac = ":".join(["{0:02x}".format(x) for x in n.ha][:n.dev.addr_len])
+            devname = n.dev.name
 
-                ret.append(a_ent(ip, mac, devname))
+            ret.append(a_ent(ip, mac, devname))
 
         return ret
 

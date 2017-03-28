@@ -441,10 +441,7 @@ class NativeType(BaseObject, NumericProxyMixIn):
         if not data:
             return NoneObject("Unable to read {0} bytes from {1}".format(self.size(), self.obj_offset))
 
-        try:
-            (val,) = struct.unpack(self.format_string, data)
-        except struct.error:
-            return NoneObject("struct.error {0} bytes from {1}".format(self.size(), self.obj_offset))
+        (val,) = struct.unpack(self.format_string, data)
 
         # Ensure that integer NativeTypes are converted to longs
         # to avoid integer boundaries when doing __rand__ proxying

@@ -382,9 +382,6 @@ class VADDump(VADInfo):
         config.add_option('BASE', short_option = 'b', default = None,
                           help = 'Dump VAD with BASE address (in hex)',
                           action = 'store', type = 'int')
-        config.add_option('MAX-SIZE', short_option = 'M', default = 0x40000000, 
-                          action = 'store', type = 'long', 
-                          help = 'Set the maximum size (default is 1GB)') 
 
     def dump_vad(self, path, vad, address_space):
         """
@@ -454,9 +451,7 @@ class VADDump(VADInfo):
             if offset == None:
                 offset = 0
 
-            filter = lambda x : x.Length < self._config.MAX_SIZE
-
-            for vad, _addrspace in task.get_vads(vad_filter = filter, skip_max_commit = True):
+            for vad, _addrspace in task.get_vads(skip_max_commit = True):
 
                 if self._config.BASE and vad.Start != self._config.BASE:
                     continue

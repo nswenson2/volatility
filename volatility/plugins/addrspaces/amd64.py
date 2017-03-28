@@ -24,7 +24,6 @@ import volatility.plugins.addrspaces.paged as paged
 import volatility.obj as obj
 import struct
 
-
 ptrs_page = 2048
 entry_size = 8
 pde_shift = 21
@@ -65,39 +64,30 @@ class AMD64PagedMemory(paged.AbstractWritablePagedMemory):
     minimum_size = 0x1000
     alignment_gcd = 0x1000
     _longlong_struct = struct.Struct("<Q")
-    skip_duplicate_entries = False
 
     def entry_present(self, entry):
-        return entry and (entry & 1)
+        if entry:
+            if (entry & 1):
+                return True
+
+            arch = self.profile.metadata.get('os', 'Unknown').lower()
+
+            # The page is in transition and not a prototype.
+            # Thus, we will treat it as present.
+            if arch == "windows" and ((entry & (1 << 11)) and not (entry & (1 << 10))):
+                return True
+
+            # Linux pages that have had mprotect(...PROT_NONE) called on them
+            # have the present bit cleared and global bit set
+            if arch == "linux" and (entry & (1 << 8)):
+                return True
+
+        return False
 
     def page_size_flag(self, entry):
         if (entry & (1 << 7)) == (1 << 7):
             return True
         return False
-
-    def is_user_page(self, entry):
-        return entry & (1 << 2) == (1 << 2)
-
-    def is_supervisor_page(self, entry):
-        return not self.is_user_page(entry)
-
-    def is_writeable(self, entry):
-        return entry & (1 << 1) == (1 << 1) 
-        
-    def is_dirty(self, entry):
-        return entry & (1 << 6) == (1 << 6)
-        
-    def is_nx(self, entry):
-        return entry & (1 << 63) == (1 << 63)
-        
-    def is_accessed(self, entry):
-        return entry & (1 << 5) == (1 << 5)
-        
-    def is_copyonwrite(self, entry):
-        return entry & (1 << 9) == (1 << 9)
-        
-    def is_prototype(self, entry):
-        return entry & (1 << 10) == (1 << 10)
 
     def get_2MB_paddr(self, vaddr, pgd_entry):
         paddr = (pgd_entry & 0xFFFFFFFE00000) | (vaddr & 0x00000001fffff)
@@ -180,14 +170,7 @@ class AMD64PagedMemory(paged.AbstractWritablePagedMemory):
     def get_paddr(self, vaddr, pte):
         return self.pte_pfn(pte) | (vaddr & ((1 << page_shift) - 1))
 
-    def vtop(self, vaddr):
-        '''
-        This method translates an address in the virtual
-        address space to its associated physical address.
-        Invalid entries should be handled with operating
-        system abstractions.
-        '''
-        vaddr = long(vaddr)
+    def _vtop(self, vaddr):
         retVal = None
         pml4e = self.get_pml4e(vaddr)
         if not self.entry_present(pml4e):
@@ -210,6 +193,21 @@ class AMD64PagedMemory(paged.AbstractWritablePagedMemory):
                     retVal = self.get_paddr(vaddr, pte)
         return retVal
 
+    def vtop(self, vaddr):
+        '''
+        This method translates an address in the virtual
+        address space to its associated physical address.
+        Invalid entries should be handled with operating
+        system abstractions.
+        '''
+        vaddr = long(vaddr)
+        retVal = self._vtop(vaddr)
+        if retVal:
+            return retVal
+        elif vaddr and self.process_id and hasattr(self.base, 'virtual_addr_is_valid') and self.base.virtual_addr_is_valid(self.process_id, vaddr):
+            retVal = self._vtop(vaddr)
+        return retVal
+
     def read_long_long_phys(self, addr):
         '''
         This method returns a 64-bit little endian
@@ -228,7 +226,7 @@ class AMD64PagedMemory(paged.AbstractWritablePagedMemory):
         longlongval, = self._longlong_struct.unpack(string)
         return longlongval
 
-    def get_available_pages(self, with_pte = False):
+    def get_available_pages(self):
         '''
         This method generates a list of pages that are
         available within the address space. The entries in
@@ -239,146 +237,110 @@ class AMD64PagedMemory(paged.AbstractWritablePagedMemory):
         are accessible.
         '''
 
-        # read the full pml4
-        pml4 = self.base.read(self.dtb & 0xffffffffff000, 0x200 * 8)
-        if pml4 is None:
-            return
-
-        # unpack all entries
-        pml4_entries = struct.unpack('<512Q', pml4)
         for pml4e in range(0, 0x200):
             vaddr = pml4e << 39
-            pml4e_value = pml4_entries[pml4e]
+            pml4e_value = self.get_pml4e(vaddr)
             if not self.entry_present(pml4e_value):
                 continue
-
-            pdpt_base = (pml4e_value & 0xffffffffff000)
-            pdpt = self.base.read(pdpt_base, 0x200 * 8)
-            if pdpt is None:
-                continue
-
-            pdpt_entries = struct.unpack('<512Q', pdpt)
             for pdpte in range(0, 0x200):
                 vaddr = (pml4e << 39) | (pdpte << 30)
-                pdpte_value = pdpt_entries[pdpte]
+                pdpte_value = self.get_pdpi(vaddr, pml4e_value)
                 if not self.entry_present(pdpte_value):
                     continue
-
                 if self.page_size_flag(pdpte_value):
-                    if with_pte: 
-                        yield (pdpte_value, vaddr, 0x40000000)
-                    else:
-                        yield (vaddr, 0x40000000)
+                    yield (vaddr, 0x40000000)
                     continue
 
-                pd_base = self.pdba_base(pdpte_value)
-                pd = self.base.read(pd_base, 0x200 * 8)
-                if pd is None:
-                    continue
-
-                pd_entries = struct.unpack('<512Q', pd)
-                prev_pd_entry = None
-                for j in range(0, 0x200):
-                    soffset = (j * 0x200 * 0x200 * 8)
-
-                    entry = pd_entries[j]
-                    if self.skip_duplicate_entries and entry == prev_pd_entry:
-                        continue
-                    prev_pd_entry = entry
-
-                    if self.entry_present(entry) and self.page_size_flag(entry):
-                        if with_pte: 
-                            yield (entry, vaddr + soffset, 0x200000)
+                pgd_curr = self.pdba_base(pdpte_value)
+                for j in range(0, ptrs_per_pae_pgd):
+                    soffset = vaddr + (j * ptrs_per_pae_pgd * ptrs_per_pae_pte * 8)
+                    entry = self.read_long_long_phys(pgd_curr)
+                    pgd_curr = pgd_curr + 8
+                    if self.entry_present(entry):
+                        if self.page_size_flag(entry):
+                            yield (soffset, 0x200000)
                         else:
-                            yield (vaddr + soffset, 0x200000)
+                            pte_curr = entry & 0xFFFFFFFFFF000
+                            for k in range(0, ptrs_per_pae_pte):
+                                pte_entry = self.read_long_long_phys(pte_curr)
+                                pte_curr = pte_curr + 8
+                                if self.entry_present(pte_entry):
+                                    yield (soffset + k * 0x1000, 0x1000)
 
-                    elif self.entry_present(entry):
-                        pt_base = entry & 0xFFFFFFFFFF000
-                        pt = self.base.read(pt_base, 0x200 * 8)
-                        if pt is None:
-                            continue
-                        pt_entries = struct.unpack('<512Q', pt)
-                        prev_pt_entry = None
-                        for k in range(0, 0x200):
-                            pt_entry = pt_entries[k]
-                            if self.skip_duplicate_entries and pt_entry == prev_pt_entry:
-                                continue
-                            prev_pt_entry = pt_entry
-
-                            if self.entry_present(pt_entry):
-                                if with_pte:
-                                    yield (pt_entry, vaddr + soffset + k * 0x1000, 0x1000)
-                                else:
-                                    yield (vaddr + soffset + k * 0x1000, 0x1000)
 
     @classmethod
     def address_mask(cls, addr):
         return addr & 0xffffffffffff
 
-class WindowsAMD64PagedMemory(AMD64PagedMemory):
-    """Windows-specific AMD 64-bit address space.
+class AMD64PagedMemoryScanOptimized(AMD64PagedMemory):
+    def __init__(self, base, config, dtb=0, skip_as_check=False, *args, **kwargs):
+        AMD64PagedMemory.__init__(self, base, config, dtb, skip_as_check, *args, **kwargs)
+        if not config.profile in [ "Win10x64" ]:
+            raise AssertionError, "Profile does not need scanning optimization"
 
-    This class is a specialized version of AMD64PagedMemory that leverages
-    Windows-specific paging logic.
-    """
-    order = 55
-
-    def is_valid_profile(self, profile):
+    def is_uniform_page_table(self, pte):
         '''
-        This method checks to make sure the address space is being
-        used with a Windows profile.
+        This method tests a page table to see if all entries
+        point to the same place. This allows detection of vast
+        virtual wastelands that waste enormous amounts of time.
         '''
+        pte_entry = self.read_long_long_phys(pte)
+        end = pte + (8 * ptrs_per_pae_pte)
+        while pte < end:
+            if pte_entry != self.read_long_long_phys(pte):
+                return False
+            pte += 8
+        return True
 
-        valid = AMD64PagedMemory.is_valid_profile(self, profile)
-        return valid and profile.metadata.get('os', 'Unknown').lower() == 'windows'
-
-    def entry_present(self, entry):
-        present = AMD64PagedMemory.entry_present(self, entry)
-
-        # The page is in transition and not a prototype.
-        # Thus, we will treat it as present.
-        return present or ((entry & (1 << 11)) and not (entry & (1 << 10)))
-
-class Win10AMD64PagedMemory(WindowsAMD64PagedMemory):
-    """Windows 10-specific AMD 64-bit address space.
-
-    This class is used to filter out large sections of kernel mappings that are
-    duplicates in recent versions of Windows 10.
-    """
-    order = 53
-    skip_duplicate_entries = True
-
-    def is_valid_profile(self, profile):
+    def get_available_pages(self):
         '''
-        This address space should only be used with recent Windows 10 profiles
+        This method generates a list of pages that are
+        available within the address space. The entries in
+        are composed of the virtual address of the page
+        and the size of the particular page (address, size).
+        It walks the 0x1000/0x8 (0x200) entries in each Page Map,
+        Page Directory, and Page Table to determine which pages
+        are accessible.
         '''
 
-        valid = WindowsAMD64PagedMemory.is_valid_profile(self, profile)
-        major = profile.metadata.get('major', 0)
-        minor = profile.metadata.get('minor', 0)
-        return valid and major >= 6 and minor >= 4
+        for pml4e in range(0, 0x200):
+            vaddr = pml4e << 39
+            pml4e_value = self.get_pml4e(vaddr)
+            if not self.entry_present(pml4e_value):
+                continue
+            for pdpte in range(0, 0x200):
+                vaddr = (pml4e << 39) | (pdpte << 30)
+                pdpte_value = self.get_pdpi(vaddr, pml4e_value)
+                if not self.entry_present(pdpte_value):
+                    continue
+                if self.page_size_flag(pdpte_value):
+                    yield (vaddr, 0x40000000)
+                    continue
 
-
-class LinuxAMD64PagedMemory(AMD64PagedMemory):
-    """Linux-specific AMD 64-bit address space.
-
-    This class is a specialized version of AMD64PagedMemory that leverages
-    Linux-specific paging logic.
-    """
-    order = 55
-
-    def is_valid_profile(self, profile):
-        '''
-        This method checks to make sure the address space is being
-        used with a Linux profile.
-        '''
-
-        valid = AMD64PagedMemory.is_valid_profile(self, profile)
-        return valid and profile.metadata.get('os', 'Unknown').lower() == 'linux'
-
-    def entry_present(self, entry):
-        present = AMD64PagedMemory.entry_present(self, entry)
-
-        # Linux pages that have had mprotect(...PROT_NONE) called on them
-        # have the present bit cleared and global bit set
-        return present or (entry & (1 << 8))
+                pgd_curr = self.pdba_base(pdpte_value)
+                for j in range(0, ptrs_per_pae_pgd):
+                    soffset = vaddr + (j * ptrs_per_pae_pgd * ptrs_per_pae_pte * 8)
+                    entry = self.read_long_long_phys(pgd_curr)
+                    pgd_curr = pgd_curr + 8
+                    if self.entry_present(entry):
+                        if self.page_size_flag(entry):
+                            yield (soffset, 0x200000)
+                        else:
+                            pte_curr = entry & 0xFFFFFFFFFF000
+                            # There are page directories that contain full page tables
+                            # where every entry points to the same physical location and
+                            # and claims to be present which wastes all kinds of cpu cycles
+                            # and time in a futile attempt to collect redundant pages and then
+                            # to scan them.  If the first page table fits this criteria, this
+                            # assumes the whole directory is likewise composed so we move on.
+                            if not j:
+                                if self.is_uniform_page_table(pte_curr):
+                                    pte_entry = self.read_long_long_phys(pte_curr)
+                                    if self.entry_present(pte_entry):
+                                        yield (soffset, 0x1000)
+                                    break
+                            for k in range(0, ptrs_per_pae_pte):
+                                pte_entry = self.read_long_long_phys(pte_curr)
+                                pte_curr = pte_curr + 8
+                                if self.entry_present(pte_entry):
+                                    yield (soffset + k * 0x1000, 0x1000)

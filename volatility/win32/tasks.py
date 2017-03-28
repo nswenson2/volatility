@@ -53,12 +53,10 @@ def get_kdbg(addr_space):
         if kdbg.is_valid():
             return kdbg
 
-    kdbg_magic = obj.VolMagic(addr_space).KDBG
+    kdbg = obj.VolMagic(addr_space).KDBG.v()
 
-    for kdbg in kdbg_magic.get_suggestions():
-
-        if kdbg.is_valid():
-            return kdbg
+    if kdbg.is_valid():
+        return kdbg
 
     # skip the KPCR backup method for x64 
     memmode = addr_space.profile.metadata.get('memory_model', '32bit')

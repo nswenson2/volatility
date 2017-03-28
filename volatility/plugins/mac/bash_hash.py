@@ -125,8 +125,6 @@ class bash_funcs(obj.CType):
                 idx = ret.find("\x00")
                 if idx != -1:
                     ret = ret[:idx]
-            else:
-                ret = ""
 
         return ret
 
@@ -184,13 +182,14 @@ class mac64_bash_hash_table(bash_funcs):
    
             for bucket_ptr in bucket_array:
                 bucket = bucket_ptr.dereference_as("mac64_bucket_contents")
-                seen = {}
+                #print "-b: %x" % bucket.v()
                 
-                while bucket.is_valid() and bucket.v() not in seen:
+                while bucket.is_valid():
                     yield bucket
+                    #print "--b: %x" % bucket.v()
 
-                    seen[bucket.v()] = 1
                     bucket = bucket.next
+                    #print "---b: %x" % bucket.v()
  
 class mac32_bash_hash_table(bash_funcs):
     def __init__(self, theType, offset, vm, name = None, **kwargs):
@@ -211,7 +210,7 @@ class mac32_bash_hash_table(bash_funcs):
    
             for bucket_ptr in bucket_array:
                 bucket = bucket_ptr.dereference_as("mac32_bucket_contents")
-                while bucket.is_valid() and bucket.times_found > 0 and bucket.data.is_valid() and bucket.key != "":  
+                while bucket.times_found > 0 and bucket.data.is_valid() and bucket.key.is_valid():  
                     yield bucket
 
                     bucket = bucket.next

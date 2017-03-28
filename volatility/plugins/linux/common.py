@@ -24,7 +24,7 @@
 @contact:      atcuno@gmail.com
 @organization: 
 """
-import os, re
+import os
 
 import volatility.commands as commands
 import volatility.utils as utils
@@ -51,7 +51,6 @@ class AbstractLinuxCommand(commands.Command):
     def __init__(self, *args, **kwargs):
         self.addr_space = None
         self.known_addrs = {}
-        self.known_fops  = {}
         commands.Command.__init__(self, *args, **kwargs)
 
     @property
@@ -68,7 +67,6 @@ class AbstractLinuxCommand(commands.Command):
         return profile.metadata.get('os', 'Unknown').lower() == 'linux'
 
     def is_known_address(self, addr, modules):
-        addr = int(addr)
 
         text = self.profile.get_symbol("_text")
         etext = self.profile.get_symbol("_etext")
@@ -84,19 +82,12 @@ class AbstractLinuxCommand(commands.Command):
         return False
 
     def verify_ops(self, ops, op_members, modules):
-        ops_addr = ops.v()        
-        ops_list = []
-
-        if ops_addr in self.known_fops:
-            for check, addr in self.known_fops[ops_addr]:
-                yield check, addr
-
-            return
 
         for check in op_members:
-            addr = int(ops.m(check))
+            addr = ops.m(check)
 
-            if addr and addr != 0 and addr != -1:
+            if addr and addr != 0:
+
                 if addr in self.known_addrs:
                     known = self.known_addrs[addr]
                 else:
@@ -105,9 +96,6 @@ class AbstractLinuxCommand(commands.Command):
                 
                 if known == 0:
                     yield (check, addr)
-                    ops_list.append((check, addr))
-
-        self.known_fops[ops_addr] = ops_list
 
 class AbstractLinuxIntelCommand(AbstractLinuxCommand):
     @staticmethod
@@ -221,9 +209,7 @@ def get_path(task, filp):
     return ret
 
 def write_elf_file(dump_dir, task, elf_addr):
-    file_name = re.sub("[./\\\]", "", str(task.comm))
-
-    file_path = os.path.join(dump_dir, "%s.%d.%#8x" % (file_name, task.pid, elf_addr))
+    file_path = os.path.join(dump_dir, "%s.%d.%#8x" % (task.comm, task.pid, elf_addr))
 
     file_contents = task.get_elf(elf_addr)
 

@@ -54,7 +54,6 @@ class WinXPSP2x86(obj.Profile):
     _md_os = 'windows'
     _md_memory_model = '32bit'
     _md_vtype_module = 'volatility.plugins.overlays.windows.xp_sp2_x86_vtypes'
-    _md_product = ["NtProductWinNt"]
 
 class WinXPSP3x86(obj.Profile):
     """ A Profile for Windows XP SP3 x86 """
@@ -63,6 +62,5 @@ class WinXPSP3x86(obj.Profile):
     _md_os = 'windows'
     _md_memory_model = '32bit'
     _md_vtype_module = 'volatility.plugins.overlays.windows.xp_sp3_x86_vtypes'
-    _md_product = ["NtProductWinNt"]
 
 

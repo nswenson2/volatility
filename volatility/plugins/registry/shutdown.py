@@ -69,13 +69,11 @@ class ShutdownTime(common.AbstractWindowsCommand):
         result["hive"] = "SYSTEM"
         result["valuename"] = "ShutdownTime"
         result["value"] = value
-        result["timestamp"] = ""
-        if value != None:
-            try:
-                bufferas = addrspace.BufferAddressSpace(self._config, data = value)
-                result["timestamp"] = obj.Object("WinTimeStamp", vm = bufferas, offset = 0, is_utc = True)
-            except (struct.error, TypeError):
-                pass
+        try:
+            bufferas = addrspace.BufferAddressSpace(self._config, data = value)
+            result["timestamp"] = obj.Object("WinTimeStamp", vm = bufferas, offset = 0, is_utc = True)
+        except struct.error:
+            result["timestamp"] = ""
         yield result
 
     def unified_output(self, data):

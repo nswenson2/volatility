@@ -236,7 +236,6 @@ class VistaSP0x86(obj.Profile):
     _md_memory_model = '32bit'
     _md_os = 'windows'
     _md_vtype_module = 'volatility.plugins.overlays.windows.vista_sp0_x86_vtypes'
-    _md_product = ["NtProductWinNt"]
 
 class VistaSP0x64(obj.Profile):
     """ A Profile for Windows Vista SP0 x64 """
@@ -246,7 +245,6 @@ class VistaSP0x64(obj.Profile):
     _md_memory_model = '64bit'
     _md_os = 'windows'
     _md_vtype_module = 'volatility.plugins.overlays.windows.vista_sp0_x64_vtypes'
-    _md_product = ["NtProductWinNt"]
 
 class VistaSP1x86(obj.Profile):
     """ A Profile for Windows Vista SP1 x86 """
@@ -256,7 +254,6 @@ class VistaSP1x86(obj.Profile):
     _md_memory_model = '32bit'
     _md_os = 'windows'
     _md_vtype_module = 'volatility.plugins.overlays.windows.vista_sp1_x86_vtypes'
-    _md_product = ["NtProductWinNt"]
 
 class VistaSP1x64(obj.Profile):
     """ A Profile for Windows Vista SP1 x64 """
@@ -266,7 +263,6 @@ class VistaSP1x64(obj.Profile):
     _md_memory_model = '64bit'
     _md_os = 'windows'
     _md_vtype_module = 'volatility.plugins.overlays.windows.vista_sp1_x64_vtypes'
-    _md_product = ["NtProductWinNt"]
 
 class VistaSP2x86(obj.Profile):
     """ A Profile for Windows Vista SP2 x86 """
@@ -276,7 +272,6 @@ class VistaSP2x86(obj.Profile):
     _md_memory_model = '32bit'
     _md_os = 'windows'
     _md_vtype_module = 'volatility.plugins.overlays.windows.vista_sp2_x86_vtypes'
-    _md_product = ["NtProductWinNt"]
 
 class VistaSP2x64(obj.Profile):
     """ A Profile for Windows Vista SP2 x64 """
@@ -286,20 +281,15 @@ class VistaSP2x64(obj.Profile):
     _md_memory_model = '64bit'
     _md_os = 'windows'
     _md_vtype_module = 'volatility.plugins.overlays.windows.vista_sp2_x64_vtypes'
-    _md_product = ["NtProductWinNt"]
 
 class Win2008SP1x64(VistaSP1x64):
     """ A Profile for Windows 2008 SP1 x64 """
-    _md_product = ["NtProductLanManNt", "NtProductServer"]
 
 class Win2008SP2x64(VistaSP2x64):
     """ A Profile for Windows 2008 SP2 x64 """
-    _md_product = ["NtProductLanManNt", "NtProductServer"]
 
 class Win2008SP1x86(VistaSP1x86):
     """ A Profile for Windows 2008 SP1 x86 """
-    _md_product = ["NtProductLanManNt", "NtProductServer"]
 
 class Win2008SP2x86(VistaSP2x86):
     """ A Profile for Windows 2008 SP2 x86 """
-    _md_product = ["NtProductLanManNt", "NtProductServer"]

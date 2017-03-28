@@ -77,7 +77,7 @@ class UTC(datetime.tzinfo):
 
 def display_datetime(dt, custom_tz = None):
     """Returns a string from a datetime according to the display TZ (or a custom one"""
-    timeformat = "%Y-%m-%d %H:%M:%S %Z%z"
+    timeformat = "%Y-%m-%dT%H:%M:%S%z"
     if dt.tzinfo is not None and dt.tzinfo.utcoffset(dt) is not None:
         if custom_tz is not None:
             dt = dt.astimezone(custom_tz)

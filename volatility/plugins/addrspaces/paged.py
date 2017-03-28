@@ -18,6 +18,7 @@
 #
 
 #import fractions
+import logging
 import volatility.addrspace as addrspace
 import volatility.obj as obj
 
@@ -37,7 +38,19 @@ class AbstractPagedMemory(addrspace.AbstractVirtualAddressSpace):
         ## We can not stack on someone with a dtb
         self.as_assert(not (hasattr(base, 'paging_address_space') and base.paging_address_space), "Can not stack over another paging address space")
 
-        self.dtb = dtb or self.load_dtb()
+        #rajesh
+        if self.get_config().dtb:
+            self.dtb = self.get_config().dtb
+        else:
+            self.dtb = dtb or self.load_dtb()
+
+        if self.get_config().process_id:
+            self.process_id = self.get_config().process_id
+        else:
+            self.process_id = 0
+
+        logging.debug("AbstractPagedMemory dtb:{0} process_id:{1}".format(self.dtb, self.process_id))
+
         # No need to set the base or dtb, it's already been by the inherited class
 
         self.as_assert(self.dtb != None, "No valid DTB found")
@@ -52,38 +65,6 @@ class AbstractPagedMemory(addrspace.AbstractVirtualAddressSpace):
         # Reserved for future use
         #self.pagefile = config.PAGEFILE
         self.name = 'Kernel AS'
-
-    def is_user_page(self, entry):
-        """True if the page is accessible to ring 3 code"""
-        raise NotImplementedError
-
-    def is_supervisor_page(self, entry):
-        """True if the page is /only/ accessible to ring 0 code"""
-        raise NotImplementedError
-
-    def is_writeable(self, entry):
-        """True if the page can be written to"""
-        raise NotImplementedError
-        
-    def is_dirty(self, entry):
-        """True if the page has been written to"""
-        raise NotImplementedError
-        
-    def is_nx(self, entry):
-        """True if the page /cannot/ be executed"""
-        raise NotImplementedError
-        
-    def is_accessed(self, entry):
-        """True if the page has been accessed"""
-        raise NotImplementedError
-        
-    def is_copyonwrite(self, entry):
-        """True if the page is copy-on-write"""
-        raise NotImplementedError
-
-    def is_prototype(self, entry):
-        """True if the page is a prototype PTE"""
-        raise NotImplementedError
 
     def load_dtb(self):
         """Loads the DTB as quickly as possible from the config, then the base, then searching for it"""

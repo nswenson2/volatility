@@ -86,17 +86,6 @@ class Win10x86DTB(obj.ProfileModification):
             'DTBSignature' : [ None, ['VolatilityMagic', dict(value = "\x03\x00\x2A\x00")]],
             }]})
 
-class Win10KDBG(windows.AbstractKDBGMod):
-    """The Windows 10 KDBG signatures"""
-
-    before = ['Win8KDBG']
-    conditions = {'os': lambda x: x == 'windows',
-                  'major': lambda x: x == 6,
-                  'minor': lambda x: x == 4,
-                  'build': lambda x: x >= 14393}
-
-    kdbgsize = 0x368
-
 class ObHeaderCookieStore(object):
     """A class for finding and storing the nt!ObHeaderCookie value"""
 
@@ -139,20 +128,7 @@ class ObHeaderCookieStore(object):
             return False 
 
         kdbg = tasks.get_kdbg(kernel_space)
-        
-        if not kdbg:
-            debug.warning("Cannot find KDBG")
-            return False
-        
-        nt_mod = None 
-        
-        for mod in kdbg.modules():
-            nt_mod = mod 
-            break 
-            
-        if nt_mod == None:
-            debug.warning("Cannot find NT module")
-            return False
+        nt_mod = list(kdbg.modules())[0]
 
         addr = nt_mod.getprocaddress("ObGetObjectType")
         if addr == None:
@@ -271,6 +247,7 @@ class _OBJECT_HEADER_10(win8._OBJECT_HEADER):
 
         return ((addr >> 8) ^ cook ^ indx) & 0xFF
 
+
     def is_valid(self):
         """Determine if a given object header is valid"""
 
@@ -286,73 +263,16 @@ class _OBJECT_HEADER_10(win8._OBJECT_HEADER):
         return True
 
     type_map = {
-        2: 'Type',
-        3: 'Directory',
-        4: 'SymbolicLink',
-        5: 'Token',
-        6: 'Job',
-        7: 'Process',
-        8: 'Thread',
-        9: 'UserApcReserve',
-        10: 'IoCompletionReserve',
-        11: 'Silo',
-        12: 'DebugObject',
-        13: 'Event',
-        14: 'Mutant',
-        15: 'Callback',
-        16: 'Semaphore',
-        17: 'Timer',
-        18: 'IRTimer',
-        19: 'Profile',
-        20: 'KeyedEvent',
-        21: 'WindowStation',
-        22: 'Desktop',
-        23: 'Composition',
-        24: 'RawInputManager',
-        25: 'TpWorkerFactory',
-        26: 'Adapter',
-        27: 'Controller',
-        28: 'Device',
-        29: 'Driver',
-        30: 'IoCompletion',
-        31: 'WaitCompletionPacket',
-        32: 'File',
-        33: 'TmTm',
-        34: 'TmTx',
-        35: 'TmRm',
-        36: 'TmEn',
-        37: 'Section',
-        38: 'Session',
-        39: 'Partition',
-        40: 'Key',
-        41: 'ALPC Port',
-        42: 'PowerRequest',
-        43: 'WmiGuid',
-        44: 'EtwRegistration',
-        45: 'EtwConsumer',
-        46: 'DmaAdapter',
-        47: 'DmaDomain',
-        48: 'PcwObject',
-        49: 'FilterConnectionPort',
-        50: 'FilterCommunicationPort',
-        51: 'NetworkNamespace',
-        52: 'DxgkSharedResource',
-        53: 'DxgkSharedSyncObject',
-        54: 'DxgkSharedSwapChainObject',
-        }
-
-class _OBJECT_HEADER_10_1AC738FB(_OBJECT_HEADER_10):
-
-    type_map = {
-        2: 'Type',
-        3: 'Directory',
-        4: 'SymbolicLink',
-        5: 'Token',
-        6: 'Job',
-        7: 'Process',
-        8: 'Thread',
-        9: 'UserApcReserve',
-        10: 'IoCompletionReserve',
+        1: 'Type',
+        2: 'Directory',
+        3: 'SymbolicLink',
+        4: 'Token',
+        5: 'Job',
+        6: 'Process',
+        7: 'Thread',
+        8: 'UserApcReserve',
+        9: 'IoCompletionReserve',
+        10: 'Silo',
         11: 'DebugObject',
         12: 'Event',
         13: 'Mutant',
@@ -398,80 +318,6 @@ class _OBJECT_HEADER_10_1AC738FB(_OBJECT_HEADER_10):
         53: 'DxgkSharedSwapChainObject',
         }
 
-class _OBJECT_HEADER_10_DD08DD42(_OBJECT_HEADER_10):
-
-    type_map = {
-        2: 'Type',
-        3: 'Directory',
-        4: 'SymbolicLink',
-        5: 'Token',
-        6: 'Job',
-        7: 'Process',
-        8: 'Thread',
-        9: 'UserApcReserve',
-        10: 'IoCompletionReserve',
-        11: 'PsSiloContextPaged',
-        12: 'PsSiloContextNonPaged',
-        13: 'DebugObject',
-        14: 'Event',
-        15: 'Mutant',
-        16: 'Callback',
-        17: 'Semaphore',
-        18: 'Timer',
-        19: 'IRTimer',
-        20: 'Profile',
-        21: 'KeyedEvent',
-        22: 'WindowStation',
-        23: 'Desktop',
-        24: 'Composition',
-        25: 'RawInputManager',
-        26: 'CoreMessaging',
-        27: 'TpWorkerFactory',
-        28: 'Adapter',
-        29: 'Controller',
-        30: 'Device',
-        31: 'Driver',
-        32: 'IoCompletion',
-        33: 'WaitCompletionPacket',
-        34: 'File',
-        35: 'TmTm',
-        36: 'TmTx',
-        37: 'TmRm',
-        38: 'TmEn',
-        39: 'Section',
-        40: 'Session',
-        41: 'Partition',
-        42: 'Key',
-        43: 'RegistryTransaction',
-        44: 'ALPC',
-        45: 'PowerRequest',
-        46: 'WmiGuid',
-        47: 'EtwRegistration',
-        48: 'EtwConsumer',
-        49: 'DmaAdapter',
-        50: 'DmaDomain',
-        51: 'PcwObject',
-        52: 'FilterConnectionPort',
-        53: 'FilterCommunicationPort',
-        54: 'NdisCmState',
-        55: 'DxgkSharedResource',
-        56: 'DxgkSharedSyncObject',
-        57: 'DxgkSharedSwapChainObject',
-        58: 'VRegConfigurationContext',
-        59: 'VirtualKey',
-        }
-        
-class _HANDLE_TABLE_10_DD08DD42(win8._HANDLE_TABLE_81R264):
-    
-    def decode_pointer(self, value):
-        
-        value = value & 0xFFFFFFFFFFFFFFF8
-        value = value >> self.DECODE_MAGIC
-        if (value & (1 << 47)):
-            value = value | 0xFFFF000000000000
-    
-        return value
-
 class Win10ObjectHeader(obj.ProfileModification):
     before = ["Win8ObjectClasses"]
     conditions = {'os': lambda x: x == 'windows',
@@ -479,62 +325,7 @@ class Win10ObjectHeader(obj.ProfileModification):
                   'minor': lambda x: x == 4}
 
     def modification(self, profile):
-
-        metadata = profile.metadata
-        build = metadata.get("build", 0)
-
-        if build >= 14393:
-            header = _OBJECT_HEADER_10_DD08DD42
-            
-            ## update the handle table here as well
-            if metadata.get("memory_model") == "64bit":
-                profile.object_classes.update({
-                    "_HANDLE_TABLE": _HANDLE_TABLE_10_DD08DD42})
-            
-        elif build >= 10240:
-            header = _OBJECT_HEADER_10_1AC738FB
-        else:
-            header = _OBJECT_HEADER_10
-
-        profile.object_classes.update({"_OBJECT_HEADER": header})
-
-class Win10PoolHeader(obj.ProfileModification):
-    before = ['WindowsOverlay']
-    conditions = {'os': lambda x: x == 'windows',
-                  'major': lambda x: x == 6,
-                  'minor': lambda x: x == 4,
-                  'build': lambda x: x == 10240}
-
-    def modification(self, profile):
-
-        meta = profile.metadata
-        memory_model = meta.get("memory_model", "32bit")
-
-        if memory_model == "32bit":
-            pool_types = {'_POOL_HEADER' : [ 0x8, {
-                'PreviousSize' : [ 0x0, ['BitField', dict(start_bit = 0, end_bit = 9, native_type='unsigned short')]],
-                'PoolIndex' : [ 0x0, ['BitField', dict(start_bit = 9, end_bit = 16, native_type='unsigned short')]],
-                'BlockSize' : [ 0x2, ['BitField', dict(start_bit = 0, end_bit = 9, native_type='unsigned short')]],
-                'PoolType' : [ 0x2, ['BitField', dict(start_bit = 9, end_bit = 16, native_type='unsigned short')]],
-                'Ulong1' : [ 0x0, ['unsigned long']],
-                'PoolTag' : [ 0x4, ['unsigned long']],
-                'AllocatorBackTraceIndex' : [ 0x4, ['unsigned short']],
-                'PoolTagHash' : [ 0x6, ['unsigned short']],
-                }]}
-        else:
-            pool_types = {'_POOL_HEADER' : [ 0x10, {
-                 'PreviousSize' : [ 0x0, ['BitField', dict(start_bit = 0, end_bit = 8, native_type='unsigned short')]],
-                 'PoolIndex' : [ 0x0, ['BitField', dict(start_bit = 8, end_bit = 16, native_type='unsigned short')]],
-                 'BlockSize' : [ 0x2, ['BitField', dict(start_bit = 0, end_bit = 8, native_type='unsigned short')]],
-                 'PoolType' : [ 0x2, ['BitField', dict(start_bit = 8, end_bit = 16, native_type='unsigned short')]],
-                 'Ulong1' : [ 0x0, ['unsigned long']],
-                 'PoolTag' : [ 0x4, ['unsigned long']],
-                 'ProcessBilled' : [ 0x8, ['pointer64', ['_EPROCESS']]],
-                 'AllocatorBackTraceIndex' : [ 0x8, ['unsigned short']],
-                 'PoolTagHash' : [ 0xa, ['unsigned short']],
-                 }]}
-
-        profile.vtypes.update(pool_types)
+        profile.object_classes.update({"_OBJECT_HEADER": _OBJECT_HEADER_10})
 
 class Win10x64(obj.Profile):
     """ A Profile for Windows 10 x64 """
@@ -544,27 +335,6 @@ class Win10x64(obj.Profile):
     _md_minor = 4
     _md_build = 9841
     _md_vtype_module = 'volatility.plugins.overlays.windows.win10_x64_vtypes'
-    _md_product = ["NtProductWinNt"]
-
-class Win10x64_10586(obj.Profile):
-    """ A Profile for Windows 10 x64 (10.0.10586.306 / 2016-04-23) """
-    _md_memory_model = '64bit'
-    _md_os = 'windows'
-    _md_major = 6
-    _md_minor = 4
-    _md_build = 10240
-    _md_vtype_module = 'volatility.plugins.overlays.windows.win10_x64_1AC738FB_vtypes'
-    _md_product = ["NtProductWinNt"]
-
-class Win10x64_14393(obj.Profile):
-    """ A Profile for Windows 10 x64 (10.0.14393.0 / 2016-07-16) """
-    _md_memory_model = '64bit'
-    _md_os = 'windows'
-    _md_major = 6
-    _md_minor = 4
-    _md_build = 14393
-    _md_vtype_module = 'volatility.plugins.overlays.windows.win10_x64_DD08DD42_vtypes'
-    _md_product = ["NtProductWinNt"]
 
 class Win10x86(obj.Profile):
     """ A Profile for Windows 10 x86 """
@@ -574,34 +344,8 @@ class Win10x86(obj.Profile):
     _md_minor = 4
     _md_build = 9841
     _md_vtype_module = 'volatility.plugins.overlays.windows.win10_x86_vtypes'
-    _md_product = ["NtProductWinNt"]
 
-class Win10x86_10586(obj.Profile):
-    """ A Profile for Windows 10 x86 (10.0.10586.420 / 2016-05-28) """
-    _md_memory_model = '32bit'
-    _md_os = 'windows'
-    _md_major = 6
-    _md_minor = 4
-    _md_build = 10240
-    _md_vtype_module = 'volatility.plugins.overlays.windows.win10_x86_44B89EEA_vtypes'
-    _md_product = ["NtProductWinNt"]
-
-class Win10x86_14393(obj.Profile):
-    """ A Profile for Windows 10 x86 (10.0.14393.0 / 2016-07-16) """
-    _md_memory_model = '32bit'
-    _md_os = 'windows'
-    _md_major = 6
-    _md_minor = 4
-    _md_build = 14393
-    _md_vtype_module = 'volatility.plugins.overlays.windows.win10_x86_9619274A_vtypes'
-    _md_product = ["NtProductWinNt"]
-    
-class Win2016x64_14393(Win10x64_14393):
-    """ A Profile for Windows Server 2016 x64 (10.0.14393.0 / 2016-07-16) """
-    _md_memory_model = '64bit'
-    _md_os = 'windows'
-    _md_major = 6
-    _md_minor = 4
-    _md_build = 14393
-    _md_vtype_module = 'volatility.plugins.overlays.windows.win10_x64_DD08DD42_vtypes'
-    _md_product = ["NtProductLanManNt", "NtProductServer"]
+class Win2016x64(Win10x64):
+    """ A Profile for Windows Server 2016 x64"""
+    _md_build = 9842    # TODO: <-- find out what this really is
+    _md_vtype_module = 'volatility.plugins.overlays.windows.win2016_x64_vtypes'

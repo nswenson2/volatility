@@ -78,9 +78,8 @@ class linux_cpuinfo(linux_common.AbstractLinuxIntelCommand):
 
     def online_cpus(self):
         """ returns a list of online cpus (the processor numbers) """
-        cpu_online_bits_addr  = self.addr_space.profile.get_symbol("cpu_online_bits")
-        cpu_present_map_addr  = self.addr_space.profile.get_symbol("cpu_present_map")
-        cpu_present_mask_addr = self.addr_space.profile.get_symbol("__cpu_present_mask")
+        cpu_online_bits_addr = self.addr_space.profile.get_symbol("cpu_online_bits")
+        cpu_present_map_addr = self.addr_space.profile.get_symbol("cpu_present_map")
 
         #later kernels..
         if cpu_online_bits_addr:
@@ -89,14 +88,11 @@ class linux_cpuinfo(linux_common.AbstractLinuxIntelCommand):
         elif cpu_present_map_addr:
             bmap = obj.Object("unsigned long", offset = cpu_present_map_addr, vm = self.addr_space)
 
-        elif cpu_present_mask_addr:
-            bmap = obj.Object("unsigned long", offset = cpu_present_mask_addr, vm = self.addr_space)
-
         else:
             raise AttributeError, "Unable to determine number of online CPUs for memory capture"
 
         cpus = []
-        for i in range(32):
+        for i in range(8):
             if bmap & (1 << i):
                 cpus.append(i)
 
